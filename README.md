@@ -6,7 +6,10 @@ Multi-Provider Domain & DNS Management Tool für die zentrale Verwaltung aller D
 
 - **Multi-Provider Support**: Netcup, Porkbun, IONOS (weitere geplant)
 - **Server-Gruppierung**: Alle Domains nach IP/Server gruppiert anzeigen
-- **Schnellsuche**: Domain oder IP eingeben, sofort finden
+- **Server-Namen & IDs**: Netcup Server-IDs (vXXX) direkt sichtbar
+- **IPv4 & IPv6**: A und AAAA Records mit farbigen Badges
+- **Akkordeon-UI**: Übersichtlich zugeklappte Server-Karten
+- **Schnellsuche**: Domain, IP oder Server-ID eingeben, sofort finden
 - **API-basiert**: Direkt von den Providern, keine DNS-Auflösung nötig
 - **Dark Mode**: Augenfreundliches Interface
 
@@ -53,6 +56,16 @@ NETCUP_CUSTOMER_ID=12345
 NETCUP_API_KEY=your-api-key
 NETCUP_API_PASSWORD=your-api-password
 
+# Domains (comma-separated) - benötigt für nicht-Reseller Accounts
+# (listallDomains API ist nur für Reseller verfügbar)
+NETCUP_DOMAINS=example.de,example.com,example.org
+
+# Server Namen mit Netcup IDs (JSON Format)
+SERVERS={"94.16.111.1": {"name": "VPS Floppy Disc", "id": "v220230585235229886"}, "89.58.2.143": {"name": "RS Black Tornado", "id": "v220211185235168979"}}
+
+# App Secret
+SECRET_KEY=your-secret-key
+
 # Porkbun (coming soon)
 # PORKBUN_API_KEY=
 # PORKBUN_SECRET_KEY=
@@ -62,12 +75,25 @@ NETCUP_API_PASSWORD=your-api-password
 # IONOS_SECRET=
 ```
 
+### Server-Konfiguration
+
+Die `SERVERS` Variable erlaubt es, IPs mit Namen und Netcup Server-IDs zu verknüpfen:
+
+```json
+{
+  "94.16.111.1": {"name": "VPS Floppy Disc", "id": "v220230585235229886"},
+  "89.58.2.143": {"name": "RS Black Tornado", "id": "v220211185235168979"},
+  "46.38.243.234": {"name": "Netcup Parking", "id": ""},
+  "76.76.21.21": {"name": "Vercel", "id": ""}
+}
+```
+
 ## API Endpoints
 
 | Endpoint | Beschreibung |
 |----------|--------------|
 | `GET /api/domains` | Alle Domains mit DNS Records |
-| `GET /api/servers` | Domains gruppiert nach IP |
+| `GET /api/servers` | Domains gruppiert nach IP (mit Namen & IDs) |
 | `GET /api/domains/by-ip/<ip>` | Domains für eine IP finden |
 | `GET /api/health` | Provider Status |
 
@@ -76,6 +102,7 @@ NETCUP_API_PASSWORD=your-api-password
 ### Netcup
 - API Key generieren: [CCP → Stammdaten → API](https://ccp.netcup.net)
 - Doku: https://ccp.netcup.net/run/webservice/servers/endpoint.php
+- **Hinweis**: `listallDomains` ist nur für Reseller verfügbar, daher manuelle Domain-Liste in `NETCUP_DOMAINS`
 
 ### Porkbun (geplant)
 - API Docs: https://porkbun.com/api/json/v3/documentation
@@ -86,6 +113,10 @@ NETCUP_API_PASSWORD=your-api-password
 ## Roadmap
 
 - [x] Netcup Integration
+- [x] Manuelle Domain-Liste (für nicht-Reseller)
+- [x] Server-Namen & IDs
+- [x] IPv6 (AAAA) Support
+- [x] Akkordeon-UI
 - [ ] Porkbun Integration
 - [ ] IONOS Integration
 - [ ] DNS Record Editing
