@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DNS Central - Domain Manager</title>
+    <style>
+        :root {
+            --bg: #1a1a2e;
+            --surface: #16213e;
+            --primary: #0f3460;
+            --accent: #e94560;
+            --text: #eee;
+            --text-dim: #888;
+            --success: #4ade80;
+            --border: #333;
+        }
+        
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+        }
+        
+        header {
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        header h1 {
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+        
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 0.5rem;
+        }
+        
+        .status-dot.online { background: var(--success); }
+        .status-dot.offline { background: var(--accent); }
+        
+        main {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        
+        .toolbar {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+        }
+        
+        .search-box {
+            flex: 1;
+            min-width: 200px;
+        }
+        
+        input[type="text"] {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text);
+            font-size: 1rem;
+        }
+        
+        input[type="text"]:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+        
+        .btn {
+            padding: 0.75rem 1.5rem;
+            background: var(--accent);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: opacity 0.2s;
+        }
+        
+        .btn:hover { opacity: 0.9; }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        
+        .btn-secondary {
+            background: var(--primary);
+        }
+        
+        .view-toggle {
+            display: flex;
+            gap: 0;
+        }
+        
+        .view-toggle button {
+            padding: 0.75rem 1rem;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            color: var(--text);
+            cursor: pointer;
+        }
+        
+        .view-toggle button:first-child { border-radius: 8px 0 0 8px; }
+        .view-toggle button:last-child { border-radius: 0 8px 8px 0; }
+        .view-toggle button.active { background: var(--accent); border-color: var(--accent); }
+        
+        .loading {
+            text-align: center;
+            padding: 4rem;
+            color: var(--text-dim);
+        }
+        
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid var(--border);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+        
+        @keyframes spin { to { transform: rotate(360deg); } }
+        
+        /* Server/IP View */
+        .server-grid {
+            display: grid;
+            gap: 1.5rem;
+        }
+        
+        .server-card {
+            background: var(--surface);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        
+        .server-header {
+            background: var(--primary);
+            padding: 1rem 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .server-ip {
+            font-family: "SF Mono", Monaco, monospace;
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+        
+        .domain-count {
+            background: var(--accent);
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+        }
+        
+        .domain-list {
+            padding: 1rem 1.5rem;
+        }
+        
+        .domain-item {
+            padding: 0.5rem 0;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .domain-item:last-child { border-bottom: none; }
+        
+        .domain-name {
+            font-family: "SF Mono", Monaco, monospace;
+        }
+        
+        .domain-hostname {
+            color: var(--text-dim);
+            font-size: 0.85rem;
+        }
+        
+        .provider-badge {
+            font-size: 0.75rem;
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            background: var(--primary);
+        }
+        
+        /* Domain View */
+        .domain-grid {
+            display: grid;
+            gap: 1rem;
+        }
+        
+        .domain-card {
+            background: var(--surface);
+            border-radius: 12px;
+            padding: 1.5rem;
+        }
+        
+        .domain-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+        
+        .domain-card-title {
+            font-family: "SF Mono", Monaco, monospace;
+            font-size: 1.1rem;
+        }
+        
+        .record-list {
+            font-size: 0.9rem;
+        }
+        
+        .record-item {
+            display: grid;
+            grid-template-columns: 60px 1fr 1fr;
+            gap: 1rem;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .record-item:last-child { border-bottom: none; }
+        
+        .record-type {
+            font-weight: 600;
+            color: var(--accent);
+        }
+        
+        .record-host { color: var(--text-dim); }
+        
+        .record-value {
+            font-family: "SF Mono", Monaco, monospace;
+            word-break: break-all;
+        }
+        
+        .error-message {
+            background: rgba(233, 69, 96, 0.2);
+            border: 1px solid var(--accent);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+        
+        .stats {
+            display: flex;
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+        
+        .stat-item {
+            background: var(--surface);
+            padding: 1rem 1.5rem;
+            border-radius: 8px;
+        }
+        
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 600;
+            color: var(--accent);
+        }
+        
+        .stat-label {
+            color: var(--text-dim);
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>🌐 DNS Central</h1>
+        <div id="provider-status">
+            <span class="status-dot" id="netcup-status"></span> Netcup
+        </div>
+    </header>
+    
+    <main>
+        <div class="toolbar">
+            <div class="search-box">
+                <input type="text" id="search" placeholder="Domain oder IP suchen...">
+            </div>
+            <div class="view-toggle">
+                <button id="view-servers" class="active">Nach Server</button>
+                <button id="view-domains">Nach Domain</button>
+            </div>
+            <button class="btn" id="refresh">⟳ Aktualisieren</button>
+        </div>
+        
+        <div class="stats" id="stats" style="display: none;">
+            <div class="stat-item">
+                <div class="stat-value" id="stat-domains">0</div>
+                <div class="stat-label">Domains</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="stat-servers">0</div>
+                <div class="stat-label">Server</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="stat-records">0</div>
+                <div class="stat-label">DNS Records</div>
+            </div>
+        </div>
+        
+        <div id="content">
+            <div class="loading">
+                <div class="spinner"></div>
+                <p>Lade Domains...</p>
+            </div>
+        </div>
+    </main>
+    
+    <script>
+        let allData = { domains: [], servers: {} };
+        let currentView = 'servers';
+        
+        // Health Check
+        async function checkHealth() {
+            try {
+                const res = await fetch('/api/health');
+                const data = await res.json();
+                
+                document.getElementById('netcup-status').className = 
+                    'status-dot ' + (data.netcup ? 'online' : 'offline');
+            } catch {
+                document.getElementById('netcup-status').className = 'status-dot offline';
+            }
+        }
+        
+        // Daten laden
+        async function loadData() {
+            document.getElementById('content').innerHTML = `
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <p>Lade Domains...</p>
+                </div>
+            `;
+            
+            try {
+                // Domains und Server parallel laden
+                const [domainsRes, serversRes] = await Promise.all([
+                    fetch('/api/domains'),
+                    fetch('/api/servers')
+                ]);
+                
+                const domainsData = await domainsRes.json();
+                const serversData = await serversRes.json();
+                
+                if (domainsData.status === 'success' && serversData.status === 'success') {
+                    allData.domains = domainsData.domains;
+                    allData.servers = serversData.servers;
+                    
+                    updateStats();
+                    render();
+                } else {
+                    showError(domainsData.message || serversData.message || 'Unbekannter Fehler');
+                }
+            } catch (err) {
+                showError('Verbindungsfehler: ' + err.message);
+            }
+        }
+        
+        function updateStats() {
+            const totalRecords = allData.domains.reduce((sum, d) => sum + d.records.length, 0);
+            
+            document.getElementById('stat-domains').textContent = allData.domains.length;
+            document.getElementById('stat-servers').textContent = Object.keys(allData.servers).length;
+            document.getElementById('stat-records').textContent = totalRecords;
+            document.getElementById('stats').style.display = 'flex';
+        }
+        
+        function showError(msg) {
+            document.getElementById('content').innerHTML = `
+                <div class="error-message">
+                    <strong>Fehler:</strong> ${msg}
+                </div>
+            `;
+        }
+        
+        function render() {
+            const search = document.getElementById('search').value.toLowerCase();
+            
+            if (currentView === 'servers') {
+                renderServers(search);
+            } else {
+                renderDomains(search);
+            }
+        }
+        
+        function renderServers(search) {
+            let html = '<div class="server-grid">';
+            
+            const sortedIPs = Object.keys(allData.servers).sort();
+            
+            for (const ip of sortedIPs) {
+                const domains = allData.servers[ip];
+                
+                // Filter
+                const filtered = domains.filter(d => 
+                    !search || 
+                    ip.includes(search) || 
+                    d.fqdn.toLowerCase().includes(search)
+                );
+                
+                if (filtered.length === 0) continue;
+                
+                html += `
+                    <div class="server-card">
+                        <div class="server-header">
+                            <span class="server-ip">${ip}</span>
+                            <span class="domain-count">${filtered.length} Domain${filtered.length !== 1 ? 's' : ''}</span>
+                        </div>
+                        <div class="domain-list">
+                            ${filtered.map(d => `
+                                <div class="domain-item">
+                                    <div>
+                                        <div class="domain-name">${d.fqdn}</div>
+                                        ${d.hostname !== '@' ? `<div class="domain-hostname">Subdomain: ${d.hostname}</div>` : ''}
+                                    </div>
+                                    <span class="provider-badge">netcup</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+            
+            html += '</div>';
+            document.getElementById('content').innerHTML = html;
+        }
+        
+        function renderDomains(search) {
+            let html = '<div class="domain-grid">';
+            
+            const filtered = allData.domains.filter(d =>
+                !search ||
+                d.domain.toLowerCase().includes(search) ||
+                d.ips.some(ip => ip.includes(search))
+            );
+            
+            for (const domain of filtered) {
+                html += `
+                    <div class="domain-card">
+                        <div class="domain-card-header">
+                            <span class="domain-card-title">${domain.domain}</span>
+                            <span class="provider-badge">netcup</span>
+                        </div>
+                        <div class="record-list">
+                            ${domain.records.map(r => `
+                                <div class="record-item">
+                                    <span class="record-type">${r.type}</span>
+                                    <span class="record-host">${r.hostname || '@'}</span>
+                                    <span class="record-value">${r.destination}</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+            
+            html += '</div>';
+            document.getElementById('content').innerHTML = html;
+        }
+        
+        // Event Listeners
+        document.getElementById('view-servers').addEventListener('click', () => {
+            currentView = 'servers';
+            document.getElementById('view-servers').classList.add('active');
+            document.getElementById('view-domains').classList.remove('active');
+            render();
+        });
+        
+        document.getElementById('view-domains').addEventListener('click', () => {
+            currentView = 'domains';
+            document.getElementById('view-domains').classList.add('active');
+            document.getElementById('view-servers').classList.remove('active');
+            render();
+        });
+        
+        document.getElementById('search').addEventListener('input', render);
+        document.getElementById('refresh').addEventListener('click', loadData);
+        
+        // Init
+        checkHealth();
+        loadData();
+    </script>
+</body>
+</html>
