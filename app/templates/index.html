@@ -154,23 +154,74 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+            cursor: pointer;
+            user-select: none;
         }
-        
-        .server-ip {
-            font-family: "SF Mono", Monaco, monospace;
+
+        .server-header:hover {
+            background: #1a4a7a;
+        }
+
+        .server-header .toggle-icon {
+            margin-right: 0.75rem;
+            transition: transform 0.2s;
+        }
+
+        .server-card.open .toggle-icon {
+            transform: rotate(90deg);
+        }
+
+        .server-name {
             font-size: 1.1rem;
             font-weight: 600;
+            margin-bottom: 0.25rem;
         }
-        
+
+        .server-id {
+            font-family: "SF Mono", Monaco, monospace;
+            font-size: 0.75rem;
+            color: var(--text-dim);
+            opacity: 0.7;
+        }
+
+        .server-ip {
+            font-family: "SF Mono", Monaco, monospace;
+            font-size: 0.9rem;
+            color: var(--text-dim);
+        }
+
+        .ip-badge {
+            font-size: 0.65rem;
+            padding: 0.1rem 0.4rem;
+            border-radius: 3px;
+            margin-right: 0.5rem;
+            font-weight: 600;
+        }
+
+        .ip-badge.ipv4 {
+            background: #3b82f6;
+            color: white;
+        }
+
+        .ip-badge.ipv6 {
+            background: #8b5cf6;
+            color: white;
+        }
+
         .domain-count {
             background: var(--accent);
             padding: 0.25rem 0.75rem;
             border-radius: 20px;
             font-size: 0.85rem;
         }
-        
+
         .domain-list {
             padding: 1rem 1.5rem;
+            display: none;
+        }
+
+        .server-card.open .domain-list {
+            display: block;
         }
         
         .domain-item {
@@ -403,25 +454,39 @@
         
         function renderServers(search) {
             let html = '<div class="server-grid">';
-            
+
             const sortedIPs = Object.keys(allData.servers).sort();
-            
+
             for (const ip of sortedIPs) {
-                const domains = allData.servers[ip];
-                
+                const server = allData.servers[ip];
+                const domains = server.domains || server; // Support both new and old format
+                const serverName = server.name || '';
+                const serverId = server.id || '';
+
                 // Filter
-                const filtered = domains.filter(d => 
-                    !search || 
-                    ip.includes(search) || 
-                    d.fqdn.toLowerCase().includes(search)
+                const filtered = (Array.isArray(domains) ? domains : []).filter(d =>
+                    !search ||
+                    ip.includes(search) ||
+                    d.fqdn.toLowerCase().includes(search) ||
+                    serverName.toLowerCase().includes(search) ||
+                    serverId.toLowerCase().includes(search)
                 );
-                
+
                 if (filtered.length === 0) continue;
-                
+
+                const ipType = server.type === 'AAAA' || ip.includes(':') ? 'ipv6' : 'ipv4';
+                const ipLabel = ipType === 'ipv6' ? 'IPv6' : 'IPv4';
+
                 html += `
                     <div class="server-card">
-                        <div class="server-header">
-                            <span class="server-ip">${ip}</span>
+                        <div class="server-header" onclick="this.parentElement.classList.toggle('open')">
+                            <div style="display: flex; align-items: center;">
+                                <span class="toggle-icon">▶</span>
+                                <div>
+                                    ${serverName ? `<div class="server-name">${serverName}${serverId ? ` <span class="server-id">(${serverId})</span>` : ''}</div>` : ''}
+                                    <span class="server-ip"><span class="ip-badge ${ipType}">${ipLabel}</span>${ip}</span>
+                                </div>
+                            </div>
                             <span class="domain-count">${filtered.length} Domain${filtered.length !== 1 ? 's' : ''}</span>
                         </div>
                         <div class="domain-list">
@@ -438,7 +503,7 @@
                     </div>
                 `;
             }
-            
+
             html += '</div>';
             document.getElementById('content').innerHTML = html;
         }

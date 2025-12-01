@@ -9,14 +9,15 @@ from typing import Optional
 
 class NetcupAPI:
     """Netcup CCP API Client"""
-    
+
     API_URL = "https://ccp.netcup.net/run/webservice/servers/endpoint.php?JSON"
-    
-    def __init__(self, customer_id: str, api_key: str, api_password: str):
+
+    def __init__(self, customer_id: str, api_key: str, api_password: str, domains: list = None):
         self.customer_id = customer_id
         self.api_key = api_key
         self.api_password = api_password
         self.session_id: Optional[str] = None
+        self._manual_domains = domains or []
     
     def _call(self, action: str, params: dict = None) -> dict:
         """Make JSON-RPC call to Netcup API"""
@@ -62,11 +63,15 @@ class NetcupAPI:
     
     def list_domains(self) -> list:
         """Get all domains for this account"""
+        # Use manual domain list if provided (listallDomains is reseller-only)
+        if self._manual_domains:
+            return self._manual_domains
+
         if not self.session_id:
             self.login()
-        
+
         result = self._call("listallDomains")
-        
+
         if result.get("status") == "success":
             domains = result.get("responsedata", [])
             # Kann Liste von Strings oder Dicts sein

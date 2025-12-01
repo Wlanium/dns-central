@@ -2,6 +2,7 @@
 DNS Central Routes
 """
 
+import json
 from flask import Blueprint, render_template, request, current_app, jsonify
 from .providers import NetcupAPI
 
@@ -10,10 +11,14 @@ bp = Blueprint("main", __name__)
 
 def get_netcup_client():
     """Create Netcup API client from config"""
+    domains_str = current_app.config.get("NETCUP_DOMAINS", "")
+    domains = [d.strip() for d in domains_str.split(",") if d.strip()] if domains_str else []
+
     return NetcupAPI(
         customer_id=current_app.config["NETCUP_CUSTOMER_ID"],
         api_key=current_app.config["NETCUP_API_KEY"],
-        api_password=current_app.config["NETCUP_API_PASSWORD"]
+        api_password=current_app.config["NETCUP_API_PASSWORD"],
+        domains=domains
     )
 
 
@@ -65,28 +70,45 @@ def api_domains_by_ip(ip):
 def api_servers():
     """API: Gruppiere Domains nach Server/IP"""
     try:
+        # Load server info from config
+        server_info = json.loads(current_app.config.get("SERVERS", "{}"))
+
         with get_netcup_client() as client:
             domains = client.list_domains()
             servers = {}
-            
+
             for domain in domains:
                 records = client.get_dns_records(domain)
-                
+
                 for record in records:
-                    if record.get("type") == "A":
+                    record_type = record.get("type")
+                    if record_type in ("A", "AAAA"):
                         ip = record.get("destination")
                         hostname = record.get("hostname", "@")
-                        
+
                         if ip not in servers:
-                            servers[ip] = []
-                        
+                            info = server_info.get(ip, {})
+                            # Support both old format (string) and new format (dict)
+                            if isinstance(info, str):
+                                name = info
+                                server_id = ""
+                            else:
+                                name = info.get("name", "")
+                                server_id = info.get("id", "")
+                            servers[ip] = {
+                                "name": name,
+                                "id": server_id,
+                                "type": record_type,
+                                "domains": []
+                            }
+
                         fqdn = domain if hostname == "@" else f"{hostname}.{domain}"
-                        servers[ip].append({
+                        servers[ip]["domains"].append({
                             "domain": domain,
                             "hostname": hostname,
                             "fqdn": fqdn
                         })
-            
+
             return jsonify({"status": "success", "servers": servers})
     
     except Exception as e:
